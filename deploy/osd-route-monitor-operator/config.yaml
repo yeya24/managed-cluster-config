@@ -1,7 +1,7 @@
 deploymentMode: SelectorSyncSet
 selectorSyncSet:
   matchExpressions:
-  - key: api.openshift.com/fedramp
+  - key: ext-hypershift.openshift.io/cluster-type
     operator: NotIn
-    values:
-      - "true"
+    values: 
+      - "management-cluster"

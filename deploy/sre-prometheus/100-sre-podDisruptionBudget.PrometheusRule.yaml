@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: sre-poddisruptionbudget
+    role: alert-rules
+  name: sre-poddisruptionbudget
+  namespace: openshift-monitoring
+spec:
+  groups:
+  - name: sre-poddisruptionbudget
+    rules:
+    - alert: PodDisruptionBudgetLimitSRE
+      # This takes the original PodDisruptionBudgetLimit alert and adjusts to filter by namespace
+      # In the first max by() statement we ONLY care about the `openshift-*` namespaces. We then
+      # do an AND on any namespaces that are NOT `openshift-logging`, `openshift-operators`, etc.
+      # When we join the two statements together we are left with only the openshift-* namespaces
+      # that are NOT excluded by the second statement
+      #
+      # To add more openshift-* namespaces to the exclusion list, add them to the
+      # second statement excluding with unless below.
+      expr: |-
+        max by(namespace, poddisruptionbudget) ( kube_poddisruptionbudget_status_current_healthy{namespace=~"openshift-.*"} < kube_poddisruptionbudget_status_desired_healthy{namespace=~"openshift-.*"} )
+        unless on(namespace)
+          kube_poddisruptionbudget_labels{namespace=~"openshift-(logging|user-workload-monitoring|operators|kyverno|cnv|observability-operator|mtv|cluster-observability-operator|storage)"}
+        unless on(poddisruptionbudget)
+          kube_poddisruptionbudget_labels{poddisruptionbudget=~"gcp-filestore-csi-driver-controller-pdb|aws-efs-csi-driver-controller-pdb"}
+      for: 15m
+      labels:
+        severity: critical
+        namespace: '{{ $labels.namespace }}'
+      annotations:
+        message: 'Pod disruption budget {{ $labels.namespace }}/{{ $labels.poddisruptionbudget }} is below the minimum disruptions allowed level. Current number of healthy pods is less than desired healthy pods.'

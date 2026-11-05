@@ -5,8 +5,8 @@ metadata:
   namespace: openshift-rbac-permissions
 spec:
   permissions:
-  - allowFirst: true
-    clusterRoleName: admin
+  - clusterRoleName: admin
     namespacesAllowedRegex: (^redhat-nvidia-gpu-addon$)
+    namespacesDeniedRegex: openshift-backplane-cluster-admin
   subjectKind: Group
   subjectName: system:serviceaccounts:openshift-backplane-addon-nvidia-gpu

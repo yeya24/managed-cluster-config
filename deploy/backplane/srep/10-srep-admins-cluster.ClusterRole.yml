@@ -3,13 +3,6 @@ kind: ClusterRole
 metadata:
   name: backplane-srep-admins-cluster
 rules:
-# SRE can manage nodes
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - patch
 # SRE can get node-logs
 - apiGroups:
   - ""
@@ -17,40 +10,39 @@ rules:
   - nodes/proxy
   verbs:
   - get
-# SRE can manage projects
+# SRE can view projects
 - apiGroups:
   - config.openshift.io
   resources:
   - projects
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
 - apiGroups:
   - project.openshift.io
   resources:
   - projects
   - projectrequests
   verbs:
-  - '*'
-# SRE can manage namespaces
+  - get
+  - list
+  - watch
+# SRE can view namespaces
 - apiGroups:
   - ""
   resources:
   - namespaces
   - namespaces/finalize
   verbs:
-  - '*'
-# SRE can approve Certificate Signing Requests (CSR)
-- apiGroups:
-  - certificates.k8s.io
-  resources:
-  - certificatesigningrequests/approval
-  verbs:
-  - update
-# SRE can get and post to all endpoints
+  - get
+  - list
+  - watch
+# SRE can get all endpoints
 - nonResourceURLs:
   - '*'
   verbs:
-  - '*'
+  - get
 #### Start - more perms for srep
 # https://issues.redhat.com/browse/OSD-5537
 # SRE can create authz/n reviews
@@ -70,7 +62,6 @@ rules:
   verbs:
   - create
 - apiGroups:
-  - ""
   - authorization.openshift.io
   resources:
   - localresourceaccessreviews
@@ -81,15 +72,6 @@ rules:
   - subjectrulesreviews
   verbs:
   - create
-# SRE can delete users and identities
-- apiGroups:
-  - user.openshift.io
-  resources:
-  - users
-  - identities
-  verbs:
-  - delete
-  - deletecollection
 # SREP can view machineconfigs, machineconfigpools, kubeletconfigs, controllerconfigs
 - apiGroups:
   - machineconfiguration.openshift.io
@@ -108,13 +90,15 @@ rules:
   - get
   - list
   - watch
-# SRE can delete machines
+# SRE can view clusterautoscalers and machineautoscalers
 - apiGroups:
-  - machine.openshift.io
-  resources:
-  - machines
+  - autoscaling.openshift.io
+  resources: 
+  - '*'
   verbs:
-  - delete
+  - get
+  - list
+  - watch
 # SRE can view api request counts
 - apiGroups:
   - apiserver.openshift.io
@@ -124,7 +108,7 @@ rules:
   - get
   - list
   - watch
-# SRE can view/delete CSR objects
+# SRE can view CSR objects
 - apiGroups:
   - certificates.k8s.io
   resources:
@@ -133,8 +117,7 @@ rules:
   - get
   - list
   - watch
-  - delete
-# SRE can view/delete vpcendpoints
+# SRE can view vpcendpoints
 - apiGroups:
   - avo.openshift.io
   resources:
@@ -143,4 +126,3 @@ rules:
   - get
   - list
   - watch
-  - delete

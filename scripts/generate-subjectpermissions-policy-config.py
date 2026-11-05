@@ -8,11 +8,23 @@ from copy import deepcopy
 base_directory = "./deploy/"
 # An array of directories you want to generate policies for.
 # Please make sure ONLY the directories you want exist here.
+# Alphanumeric order is used to limit the risk of conflict when adding new directories in parallel.
 # This script doesn't walk the sub-directories.
 directories = [
-        'rbac-permissions-operator-config',
+        'backplane/ai-agent',
+        'backplane/cee',
+        'backplane/cse',
+        'backplane/csm',
+        'backplane/lpsre',
+        'backplane/mcs-tier-two',
+        'backplane/mobb',
         'backplane/srep',
-        'ccs-dedicated-admins'
+        'backplane/srep-ro',
+        'backplane/tam',
+        'osd-delete-backplane-serviceaccounts',
+        'osd-user-workload-monitoring',
+        'rbac-permissions-operator-config',
+        'ccs-dedicated-admins',
         ]
 rolebinding = \
 {'apiVersion': 'rbac.authorization.k8s.io/v1',

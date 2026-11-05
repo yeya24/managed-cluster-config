@@ -1,0 +1,17 @@
+apiVersion: managed.openshift.io/v1alpha1
+kind: SubjectPermission
+metadata:
+  name: backplane-acs-admins-project
+  namespace: openshift-rbac-permissions
+spec:
+  clusterPermissions:
+  - backplane-acs-admins-cluster
+  permissions:
+  - clusterRoleName: view
+    namespacesAllowedRegex: (^redhat-.*|^rhacs$|^rhacs-.*|^openshift$|^openshift-.*|^default$|^kube$|^kube-.*)
+    namespacesDeniedRegex: openshift-backplane-cluster-admin
+  - clusterRoleName: backplane-acs-admins-project
+    namespacesAllowedRegex: (^redhat-acs-fleetshard$|^rhacs$|^rhacs-.*|^acscs-dataplane-cd$)
+    namespacesDeniedRegex: openshift-backplane-cluster-admin
+  subjectKind: Group
+  subjectName: system:serviceaccounts:openshift-backplane-addon-acs-fleet-shard

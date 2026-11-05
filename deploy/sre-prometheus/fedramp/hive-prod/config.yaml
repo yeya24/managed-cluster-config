@@ -1,0 +1,20 @@
+deploymentMode: SelectorSyncSet
+selectorSyncSet:
+  matchExpressions:
+    - key: api.openshift.com/fedramp
+      operator: In
+      values:
+        - "true"
+    - key: ext-managed.openshift.io/hive-shard
+      operator: In
+      values:
+        - "true"
+    - key: api.openshift.com/environment
+      operator: In
+      values:
+        - "production"
+    - key: api.openshift.com/id
+      operator: NotIn
+      values:
+        - "1un6q99vtt3g1ujlqbuok3arlnd41flm"
+        - "1un6r65bn36fhtl0o5ai0vsoqoicm4qf"

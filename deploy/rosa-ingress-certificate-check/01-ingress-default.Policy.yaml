@@ -1,0 +1,28 @@
+# IMPORTANT PRECAUTIONS:
+# Any change to how this policy renders will effect all Hosted Control Planes
+# To change only NEW HCP's, use a reference to the HCP's ConfigMap. The ConfigMap
+#  will only have new keys when ClusterService makes a specific change, like provisioning.
+#  If you supply a default for when the key is missing, the existing HCP's will not be effected
+#  by the change.
+# Changing the policy directly, without the ConfigMap reference will apply to ALL HCP's
+#
+apiVersion: policy.open-cluster-management.io/v1
+kind: ConfigurationPolicy
+metadata:
+  name: rosa-ingress-controller-check
+spec:
+  evaluationInterval:
+    compliant: 2h
+    noncompliant: 45s
+  object-templates:
+    - complianceType: musthave
+      metadataComplianceType: musthave
+      objectDefinition:
+        apiVersion: operator.openshift.io/v1
+        kind: IngressController
+        metadata:
+          name: default
+          namespace: openshift-ingress-operator
+  pruneObjectBehavior: None
+  remediationAction: inform
+  severity: low

@@ -29,10 +29,29 @@ endif
 ifndef GEN_POLICY_CONFIG_SP
 $(error GEN_POLICY_CONFIG_SP is not set; check project.mk file)
 endif
+ifndef ENFORCE_BACKPLANE_RULES
+$(error ENFORCE_BACKPLANE_RULES is not set; check project.mk file)
+endif
+ifndef GEN_CMO_CONFIG
+$(error GEN_CMO_CONFIG is not set; check project.mk file)
+endif
+ifndef CHECK_SSS_CONFLICTS
+$(error CHECK_SSS_CONFLICTS is not set; check project.mk file)
+endif
 
+POLICYGEN_VERSION=v1.12.4
+BOILERPLATE_REPO_RAW=https://raw.githubusercontent.com/openshift/boilerplate/master
 
+VOLUME_MOUNT_FLAGS = :z
 CONTAINER_ENGINE?=$(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null)
-CONTAINER_RUN_FLAGS=--user : --rm -v `pwd -P`:`pwd -P`:z -w=`pwd` --platform linux/amd64
+ifneq (,$(findstring podman,$(CONTAINER_ENGINE)))
+	ifeq ($(shell uname -s), Darwin)
+		# if you're running podman on macOS, don't set the SELinux label
+		VOLUME_MOUNT_FLAGS =
+	endif
+endif
+CONTAINER_RUN_FLAGS=--user : --rm -v `pwd -P`:`pwd -P`${VOLUME_MOUNT_FLAGS} -w=`pwd` --platform linux/amd64
+
 
 ifeq ($(CONTAINER_ENGINE),)
 # Running already in a container
@@ -43,7 +62,15 @@ OC := $(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) quay.io/openshift/origin-cl
 endif
 
 .PHONY: default
-default: generate-oauth-templates generate-rosa-brand-logo generate-hive-templates
+default: check-sss-conflicts enforce-backplane-rules generate-oauth-templates generate-rosa-brand-logo generate-hive-templates sync-owners-aliases
+
+.PHONY: sync-owners-aliases
+sync-owners-aliases:
+	tmpfile=$$(mktemp OWNERS_ALIASES.XXXXXX); \
+	trap 'rm -f "$$tmpfile"' EXIT; \
+	curl -fsSL --connect-timeout 10 --max-time 30 $(BOILERPLATE_REPO_RAW)/OWNERS_ALIASES -o "$$tmpfile" && \
+	chmod 0644 "$$tmpfile" && \
+	mv "$$tmpfile" OWNERS_ALIASES
 
 .PHONY: generate-oauth-templates
 generate-oauth-templates:
@@ -57,16 +84,37 @@ generate-oauth-templates:
 
 .PHONY: generate-rosa-brand-logo
 generate-rosa-brand-logo:
-	$(OC) create configmap rosa-brand-logo -n openshift-config --from-file source/html/rosa/rosa-brand-logo.svg -o yaml > deploy/rosa-console-branding-configmap/rosa-brand-logo.yaml
+	$(OC) create configmap rosa-brand-logo -n openshift-config --from-file source/html/rosa/rosa-brand-logo.svg -o yaml > deploy/rosa-console-legacy-branding-configmap/rosa-brand-logo.yaml
 
 .PHONY: generate-hive-templates
 generate-hive-templates: generate-oauth-templates
 	if [ -z ${IN_CONTAINER} ]; then \
-		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi8/python-39 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; curl -sSL https://github.com/stolostron/policy-generator-plugin/releases/download/v1.9.1/linux-amd64-PolicyGenerator --output /opt/app-root/bin/PolicyGenerator; chmod +x /opt/app-root/bin/PolicyGenerator; ${GEN_POLICY_CONFIG}; ${GEN_POLICY_CONFIG_SP}; ${GEN_POLICY}";\
-		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi8/python-39 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; ${GEN_TEMPLATE}"; \
+		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi9/python-312 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; curl -sSL https://github.com/open-cluster-management-io/policy-generator-plugin/releases/download/${POLICYGEN_VERSION}/linux-amd64-PolicyGenerator --output /opt/app-root/bin/PolicyGenerator; chmod +x /opt/app-root/bin/PolicyGenerator; ${GEN_POLICY_CONFIG}; ${GEN_POLICY_CONFIG_SP}; ${GEN_POLICY}; ${GEN_CMO_CONFIG}";\
+		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi9/python-312 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; ${GEN_TEMPLATE}"; \
 	else \
 		${GEN_POLICY_CONFIG};\
 		${GEN_POLICY_CONFIG_SP};\
 		${GEN_POLICY};\
 		${GEN_TEMPLATE}; \
+		${GEN_CMO_CONFIG}; \
 	fi
+
+.PHONY: enforce-backplane-rules
+enforce-backplane-rules:
+	if [ -z ${IN_CONTAINER} ]; then \
+		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi8/python-39 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; ${ENFORCE_BACKPLANE_RULES}"; \
+	else \
+		${ENFORCE_BACKPLANE_RULES};\
+	fi
+
+.PHONY: check-sss-conflicts
+check-sss-conflicts:
+	if [ -z ${IN_CONTAINER} ]; then \
+		$(CONTAINER_ENGINE) run $(CONTAINER_RUN_FLAGS) registry.access.redhat.com/ubi8/python-39 /bin/bash -xc "cd `pwd -P`; pip install --disable-pip-version-check oyaml; ${CHECK_SSS_CONFLICTS}"; \
+	else \
+		${CHECK_SSS_CONFLICTS};\
+	fi
+
+.PHONY: checklinks
+checklinks:
+	scripts/checklinks.sh

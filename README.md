@@ -1,22 +1,18 @@
 # managed-cluster-config repository
 
 This repo contains static configuration specific to a "managed" OpenShift Dedicated (OSD) cluster.
-
 ## How to use this repo
-
+https://issues.redhat.com/browse/SDE-2786 has change the repo slightly: /deploy holds the sources of truth, and /generated_deploy holds the configurations that will be applied by Hive.
 To add a new SelectorSyncSet, add your yaml manifest to the `deploy` dir, then run the `make` command.
 
 Alternatively you can enable GitHub Actions on your fork and `make` will be ran automatically. Additionally,
 the action will create a new commit with the generated files.
 
-To add a Policy
-- If the manifest of the object you want to convert to policy already exists in ./deploy :  Right now the policies are group by their funtionalities (like the rbac-policies that will generate all the policies for rbac related thing.). So if you want to add an rbac manifest, go to /script/generate-policy-template.py and add the directory you want to convert in the directory array. 
-- If the manifest of the object does not exist; add your manifests; then also add the directory of your manifest into the array in /script/generate-policy-template.py 
--Policies requires to be deploy in namespaces, so if the new policies don't belong to `openshift-managed-rbac-config`, create a manifest to create a new namespace. Example: ./deploy/acm-policies/00-openshift-managed-rbac-policies.Namespace.yaml 
-- If the manifest is SubjectPermission, add the directory of the manifest into the array in /script/generate-subjectpermissions-policy-template.py. then run `make` as usually
+To add an ACM (Governance) Policy
+- If the manifest of the object you want to convert to policy already exists in `deploy` : in the object config.yaml, add a field `policy: `destination: "acm-policies"` (example: https://github.com/openshift/managed-cluster-config/blob/master/deploy/backplane/cee/config.yaml) 
+- If the manifest of the object does not exist: add your manifests with a config.yaml file. If you only want this object to be deployed as Policy, see [this example](https://github.com/openshift/managed-cluster-config/tree/bad140663d088cbce06edaf2527f69651db5a80b/deploy/hs-mgmt-route-monitor-operator)
 
-Then Run `make`
-`make` will look for the `policy-generator-config.yaml` files, runs it with the PolicyGenerator binary and save the output to `./deploy/acm-policies` directory. `make` will then automatically
+`make` will look for `config.yaml` files, runs it with the PolicyGenerator binary and save the output to `generated_deploy/acm-policies` directory. `make` will then automatically
 add the policy as a new SelectorySyncSet.
 
 # Building
@@ -27,49 +23,40 @@ add the policy as a new SelectorySyncSet.
 
 # Configuration
 
-All resources in `deploy/` are bundled into a template that is used by config management to apply to target "hive" clusters.  The configuration for this supports two options for deployment.  They can be deployed in the template so they are:
+All resources in `generated_deploy/` are bundled into a template that is used by config management to apply to target "hive" clusters.  The configuration is deployed to the "hive" cluster inside a SelectorSyncSet.
 
-1. deployed directly to the "hive" cluster
-2. deployed to the "hive" cluster inside a SelectorSyncSet
+SelectorSyncSet deployment supports resources that are synced down to OSD clusters.  Each are explained in detail here.  The general configuration is managed in a `config.yaml` file in each deploy directory.  Key things of note:
 
-Direct deployment (#1) supports resources that are not synced down to OSD clusters.  SelectorSyncSet deployment (#2) supports resoures that _are_ synced down to OSD clusters.  Each are explained in detail here.  The general configuration is managed in a `config.yaml` file in each deploy directory.  Key things of note:
-
-* This file is **optional**!  If not present it's assumed `deploymentMode` is `"SelectorSyncSet"` with no additional configuration.
+* This file is now mandatory in the scope of OSD-15267 and have been added to all folders. In case it is not define, `make` will fail
+```
++ scripts/generate_template.py -t scripts/templates/ -y deploy -d /Users/bdematte/git/managed-cluster-config/hack/ -r managed-cluster-config
+ERROR : Missing config.yaml for resource defined in deploy/acm-policies
+Some config.yaml files are missing, exiting...
+make: *** [generate-hive-templates] Error 1
+```
 * Configuration is _not_ inherited by sub-directories!  Every (EVERY) directory in the `deploy/` hierarchy must define a `config.yaml` file.
 
 You must specify a `deploymentMode` property in `config.yaml`.
 
-* `deploymentMode` (optional, default = `"SelectorSyncSet"`) - either "Direct" or "SelectorSyncSet".
+* `deploymentMode` (optional, default = `"SelectorSyncSet"`) - either "Policy" or "SelectorSyncSet".
 
 ## Direct Deployment
 
-You must specify the `environments` where the resource is deployed.  There is no default set of environments.  It is a child of the top level `direct` property.
-
-* `environments` (required, no default) - manages what environments the resources are deployed into.  Valid values are any of `"integration"`, `"stage"`, and `"production"`.
-
-Example to deploy only to all environments:
-```yaml
-deploymentMode: "Direct"
-direct:
-    environments: ["integration", "stage", "production"]
-```
-
-Example to deploy only to integration and stage:
-```yaml
-deploymentMode: "Direct"
-direct:
-    environments: ["integration", "stage"]
-```
+Direct deployments to Hive clusters should be done via [app-interface](https://gitlab.cee.redhat.com/service/app-interface#manage-openshift-resources-via-app-interface-openshiftnamespace-1yml).
 
 ## SelectorSyncSet Deployment
 
-In the `config.yaml` file you define a top level property `selectorSyncSet`.  Within this configuration is supported for `matchLabels`, `matchExpressions`, `matchLabelsApplyMode`, `resourceApplyMode`, and `applyBehavior`.
+In the `config.yaml` file you define a top level property `selectorSyncSet`.  Within this configuration is supported for `matchLabels`, `matchExpressions`, `matchLabelsApplyMode`, `resourceApplyMode` and `applyBehavior`.
 
 * `matchLabels` (optional, default: `{}`) - adds additional `matchLabels` conditions to the SelectorSyncSet's `clusterDeploymentSelector`
 * `matchExpressions` (optional, default: `[]`) - adds `matchExpressions` conditions to the SelectoSyncSet's `clusterDeploymentSelector`
 * `resourceApplyMode` (optional, default: `"Sync"`) - sets the SelectorSyncSet's `resourceApplyMode`
 * `matchLabelsApplyMode` (optional, default: `"AND"`) - When set as `"OR"` generates a separate SSS per `matchLabels` conditions. Default behavior creates a single SSS with all `matchLabels` conditions.  This is to tackle a situation where we want to apply configuration for one of many label conditions.
 * `applyBehavior` (optional, default: None, [see hive default](https://github.com/openshift/hive/blob/master/config/crds/hive.openshift.io_selectorsyncsets.yaml)) - sets the SelectorSyncSet's `applyBehavior`
+
+You can also define a top level property `policy` to specify the behaviour of `./scripts/generate-policy-config.py` for the resource. Supported sub-properties :
+* `complianceType` (optional, default: `"mustonlyhave"`, [see operator values](https://github.com/open-cluster-management-io/config-policy-controller/blob/main/api/v1/configurationpolicy_types.go) - select the compliance type for the policy when used by `./scripts/generate-policy-config.py`)
+* `metadataComplianceType` (optional, default: `"musthave"`, [see operator values](https://github.com/open-cluster-management-io/config-policy-controller/blob/main/api/v1/configurationpolicy_types.go) - select the compliance type for metadata for the policy when used by `./scripts/generate-policy-config.py`)
 
 Example to apply a directory for any of a set of label conditions using Upsert:
 ```yaml
@@ -80,6 +67,9 @@ selectorSyncSet:
         someOtherLabel: "something else"
     resourceApplyMode: "Upsert"
     matchLabelsApplyMode: "OR"
+policy:
+    complianceType: "mustonlyhave"
+    metadataComplianceType: "musthave"
 ```
 
 # Selector Sync Sets included in this repo
@@ -107,7 +97,7 @@ In OSD, managed-cluster-config sets a [key named `branding` to `dedicated`](http
 
 ## OAuth Templates
 
-Docs TBA.
+The OAuth templates are HTML files that are used to customize the login page of the OpenShift web console. These templates are built from the [oauth-templates](https://github.com/openshift/oauth-templates/) repository. managed-cluster-config overrides the default templates with custom ones that are stored in this repository. To update the templates, refer to the REAMDE in the [OSD](./source/html/osd/README.md) and [ROSA](./source/html/rosa/README.md) directories for more information.
 
 ## Resource Quotas
 

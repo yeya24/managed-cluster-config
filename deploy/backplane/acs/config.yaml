@@ -1,0 +1,11 @@
+deploymentMode: "SelectorSyncSet"
+selectorSyncSet:
+  matchLabels:
+    api.openshift.com/addon-acs-fleetshard: "true"
+    api.openshift.com/addon-acs-fleetshard-qe: "true"
+    api.openshift.com/addon-acs-fleetshard-dev: "true"
+  matchLabelsApplyMode: "OR"
+policy:
+    destination: "acm-policies"
+clusterSelectors:
+  'api.openshift.com/addon-acs-fleetshard': 'true'

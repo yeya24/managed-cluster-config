@@ -11,10 +11,34 @@ spec:
   - name: sre-node-unschedulable
     rules:
     - alert: KubeNodeUnschedulableSRE
-      expr: kube_node_spec_unschedulable > 0
-      for: 80m
+      expr: |-
+        count(
+          (avg_over_time(kube_node_spec_unschedulable[30m])) == 1  
+          and on(node) kube_node_role{role="worker"} 
+          unless 
+          ignoring(node,container,endpoint,job,namespace,service) 
+          sum(mapi_machine_set_status_replicas{name=~".*upgrade$"}) > 0
+        ) 
+      for: 31m
+      labels:
+        severity: Warning
+        namespace: openshift-monitoring
+        send_managed_notification: "true"
+        managed_notification_template: "KubeNodeUnschedulableSRE"  
+      annotations:
+        message: "One or more nodes have been unschedulable for more than an hour."
+    - alert: ControlPlaneNodeUnschedulableSRE
+      expr: |-
+        (
+        kube_node_spec_unschedulable > 0
+        unless
+        ignoring(node,container,endpoint,job,namespace,service)
+        sum(mapi_machine_set_status_replicas{name=~".*upgrade$"}) > 0
+        )
+        and on (node) (kube_node_role{role=~"infra|control-plane|master"})
+      for: 60m
       labels:
         severity: critical
         namespace: openshift-monitoring
       annotations:
-        message: "The node {{ $labels.node }} has been unschedulable for more than an hour."
+        message: "The managed node {{ $labels.node }} has been unschedulable for more than an hour."

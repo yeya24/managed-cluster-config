@@ -1,0 +1,23 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: autonode-nodeclaim-guardrails
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["karpenter.sh"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["nodeclaims"]
+  validations:
+    # Block undersized instance types (.nano, .micro, .small, .medium, .large) on NodeClaims
+    - expression: |
+        !has(object.spec) ||
+        !has(object.spec.requirements) ||
+        object.spec.requirements
+          .filter(r, r.key == 'node.kubernetes.io/instance-type' && r.operator == 'In')
+          .all(r, r.values.all(v,
+            !v.matches('\\.(nano|micro|small|medium|large)$')
+          ))
+      message: "Instance types ending in .nano, .micro, .small, .medium, or .large are not supported for OpenShift nodes."

@@ -7,7 +7,7 @@ metadata:
         policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         policy.open-cluster-management.io/standards: NIST SP 800-53
     name: rbac-permissions-operator-config
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     disabled: false
     policy-templates:
@@ -17,8 +17,12 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: v1
                         kind: Namespace
@@ -26,7 +30,8 @@ spec:
                             annotations:
                                 openshift.io/node-selector: ""
                             name: dedicated-admin
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         aggregationRule:
                             clusterRoleSelectors:
@@ -48,6 +53,7 @@ spec:
                                         - cloud-ingress-operator
                                         - rbac-permissions-operator
                                         - splunk-forwarder-operator-og
+                                        - must-gather-operator
                                         - redhat-layered-product-og
                                         - addon-rhmi-og
                                         - addon-rhmi-internal-og
@@ -64,13 +70,14 @@ spec:
                                         - openshift-managed-upgrade-operator
                                         - openshift-velero
                                         - openshift-ocm-agent-operator
+                                        - openshift-must-gather-operator
                                         - openshift-addon-operator
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
                         metadata:
                             name: dedicated-admins-cluster
-                        rules: []
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         aggregationRule:
                             clusterRoleSelectors:
@@ -100,12 +107,13 @@ spec:
                                         - openshift-velero
                                         - openshift-managed-upgrade-operator
                                         - openshift-ocm-agent-operator
+                                        - openshift-must-gather-operator
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
                         metadata:
                             name: dedicated-admins-project
-                        rules: []
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
@@ -395,7 +403,33 @@ spec:
                               verbs:
                                 - patch
                                 - update
-                    - complianceType: musthave
+                            - apiGroups:
+                                - operator.openshift.io
+                              resources:
+                                - imagecontentsourcepolicies
+                              verbs:
+                                - create
+                                - delete
+                                - patch
+                                - update
+                                - get
+                                - list
+                                - watch
+                            - apiGroups:
+                                - config.openshift.io
+                              resources:
+                                - imagedigestmirrorsets
+                                - imagetagmirrorsets
+                              verbs:
+                                - create
+                                - delete
+                                - patch
+                                - update
+                                - get
+                                - list
+                                - watch
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
@@ -519,18 +553,6 @@ spec:
                               verbs:
                                 - '*'
                             - apiGroups:
-                                - kafka.strimzi.io
-                              resources:
-                                - '*'
-                              verbs:
-                                - create
-                                - delete
-                                - get
-                                - list
-                                - patch
-                                - update
-                                - watch
-                            - apiGroups:
                                 - apiextensions.k8s.io
                               resources:
                                 - customresourcedefinitions
@@ -562,7 +584,8 @@ spec:
                                 - leases
                               verbs:
                                 - '*'
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         aggregationRule:
                             clusterRoleSelectors:
@@ -582,8 +605,8 @@ spec:
                             labels:
                                 managed.openshift.io/aggregate-to-dedicated-admins: cluster
                             name: dedicated-readers
-                        rules: []
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
@@ -878,7 +901,26 @@ spec:
                                 - get
                                 - list
                                 - watch
-                    - complianceType: musthave
+                            - apiGroups:
+                                - monitoring.coreos.com
+                              resourceNames:
+                                - k8s
+                              resources:
+                                - prometheuses/api
+                              verbs:
+                                - get
+                                - create
+                                - update
+                            - apiGroups:
+                                - certificates.k8s.io
+                              resources:
+                                - certificatesigningrequests
+                              verbs:
+                                - get
+                                - list
+                                - watch
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRoleBinding
@@ -893,7 +935,8 @@ spec:
                               name: dedicated-admins
                             - kind: Group
                               name: system:serviceaccounts:dedicated-admin
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: Role
@@ -917,7 +960,8 @@ spec:
                                 - list
                                 - get
                                 - watch
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -934,7 +978,8 @@ spec:
                               name: dedicated-admins
                             - kind: Group
                               name: system:serviceaccounts:dedicated-admin
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: Role
@@ -948,7 +993,8 @@ spec:
                                 - catalogsources
                               verbs:
                                 - '*'
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -965,7 +1011,8 @@ spec:
                               name: dedicated-admins
                             - kind: Group
                               name: system:serviceaccounts:dedicated-admin
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: Role
@@ -981,7 +1028,8 @@ spec:
                                 - list
                                 - get
                                 - watch
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -1001,12 +1049,13 @@ spec:
                 pruneObjectBehavior: DeleteIfCreated
                 remediationAction: enforce
                 severity: low
+    remediationAction: enforce
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
     name: placement-rbac-permissions-operator-config
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     clusterSelector:
         matchExpressions:
@@ -1019,7 +1068,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
     name: binding-rbac-permissions-operator-config
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 placementRef:
     apiGroup: apps.open-cluster-management.io
     kind: PlacementRule

@@ -7,7 +7,7 @@ metadata:
         policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         policy.open-cluster-management.io/standards: NIST SP 800-53
     name: osd-openshift-operators-redhat
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     disabled: false
     policy-templates:
@@ -17,14 +17,19 @@ spec:
             metadata:
                 name: osd-openshift-operators-redhat
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: v1
                         kind: Namespace
                         metadata:
                             name: openshift-operators-redhat
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -39,7 +44,8 @@ spec:
                             - apiGroup: rbac.authorization.k8s.io
                               kind: Group
                               name: dedicated-admins
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -54,7 +60,8 @@ spec:
                             - apiGroup: rbac.authorization.k8s.io
                               kind: Group
                               name: system:serviceaccounts:dedicated-admin
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -69,7 +76,8 @@ spec:
                             - apiGroup: rbac.authorization.k8s.io
                               kind: Group
                               name: dedicated-admins
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -87,12 +95,13 @@ spec:
                 pruneObjectBehavior: DeleteIfCreated
                 remediationAction: enforce
                 severity: low
+    remediationAction: enforce
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
     name: placement-osd-openshift-operators-redhat
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     clusterSelector:
         matchExpressions:
@@ -105,7 +114,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
     name: binding-osd-openshift-operators-redhat
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 placementRef:
     apiGroup: apps.open-cluster-management.io
     kind: PlacementRule

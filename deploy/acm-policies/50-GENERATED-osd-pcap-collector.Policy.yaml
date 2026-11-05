@@ -7,7 +7,7 @@ metadata:
         policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         policy.open-cluster-management.io/standards: NIST SP 800-53
     name: osd-pcap-collector
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     disabled: false
     policy-templates:
@@ -17,23 +17,32 @@ spec:
             metadata:
                 name: osd-pcap-collector
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
+                        allowHostDirVolumePlugin: false
+                        allowHostIPC: false
                         allowHostNetwork: false
+                        allowHostPID: false
+                        allowHostPorts: false
                         allowPrivilegedContainer: false
                         allowedCapabilities:
-                            - NET_ADMIN
                             - NET_RAW
                         apiVersion: security.openshift.io/v1
                         kind: SecurityContextConstraints
                         metadata:
                             name: pcap-dedicated-admins
+                        readOnlyRootFilesystem: false
                         runAsUser:
-                            type: RunAsAny
+                            type: MustRunAsNonRoot
                         seLinuxContext:
-                            type: RunAsAny
-                    - complianceType: musthave
+                            type: MustRunAs
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
@@ -48,7 +57,8 @@ spec:
                                 - securitycontextconstraints
                               verbs:
                                 - use
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRoleBinding
@@ -64,12 +74,13 @@ spec:
                 pruneObjectBehavior: DeleteIfCreated
                 remediationAction: enforce
                 severity: low
+    remediationAction: enforce
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
     name: placement-osd-pcap-collector
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     clusterSelector:
         matchExpressions:
@@ -82,7 +93,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
     name: binding-osd-pcap-collector
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 placementRef:
     apiGroup: apps.open-cluster-management.io
     kind: PlacementRule

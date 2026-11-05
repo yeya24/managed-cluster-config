@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: managed-upgrade-operator-config
+  namespace: openshift-managed-upgrade-operator
+data:
+  config.yaml: |
+    upgradeType: OSD
+    configManager:
+      source: OCM
+      ocmBaseUrl: ${OCM_BASE_URL}
+      watchInterval: 60
+    maintenance:
+      controlPlaneTime: 130
+      ignoredAlerts:
+        controlPlaneCriticals:
+        # ClusterOperatorDown - https://bugzilla.redhat.com/show_bug.cgi?id=1955300
+        - ClusterOperatorDown
+        # KubeletDown - https://issues.redhat.com/browse/OCPBUGS-20201
+        - KubeletDown
+    scale:
+      timeOut: 30
+    upgradeWindow:
+      delayTrigger: 30
+      timeOut: 120
+    nodeDrain:
+      timeOut: 45
+      expectedNodeDrainTime: 8
+      disableDrainStrategies: true
+    healthCheck:
+      ignoredCriticals:
+      - MetricsClientSendFailingSRE
+      - PruningCronjobErrorSRE
+      - etcdGRPCRequestsSlow
+      # OSD-22494
+      - AlertmanagerFailedReload
+      - CloudIngressOperatorOfflineSRE
+      - ClusterMonitoringErrorBudgetBurnSRE
+      - ConfigureAlertmanagerOperatorOfflineSRE
+      - console-ErrorBudgetBurn
+      - ControlPlaneNodeFileDescriptorLimitSRE
+      - ControlPlaneNodeFilesystemAlmostOutOfFiles
+      - ControlPlaneNodeFilesystemSpaceFillingUp
+      - COOWorkloadMissingSRE
+      - COOWorkloadDegradedSRE
+      - CustomerWorkloadPreventingDrainSRE
+      - EbsVolumeBurstBalanceLT20PctSRE
+      - EbsVolumeStuckAttaching10MinSRE
+      - EbsVolumeStuckDetaching10MinSRE
+      - etcdHighNumberOfFailedGRPCRequests
+      - ExcessiveContainerMemoryCriticalSRE
+      - ExtremelyHighIndividualControlPlaneCPU
+      - ExtremelyHighIndividualControlPlaneMemory
+      - HAProxyDownSRE
+      - HAProxyDown
+      - InsightsOperatorDownSRE
+      - KubePersistentVolumeFillingUp
+      - KubePersistentVolumeInodesFillingUp
+      - KubePersistentVolumeUsageCriticalCustomer
+      - KubePersistentVolumeUsageCriticalLayeredProduct
+      - MCDRebootError
+      - MultipleVersionsOfEFSCSIDriverInstalled
+      - NodeClockNotSynchronising
+      - NodeFileDescriptorLimit
+      - NodeFilesystemAlmostOutOfSpace
+      - NodeFilesystemAlmostOutOfFiles
+      - NodeFilesystemSpaceFillingUp
+      - NodeFilesystemFilesFillingUp
+      - NodeRAIDDegraded
+      - NorthboundStale
+      - OCMAgentResponseFailureServiceLogsSRE
+      - PodDisruptionBudgetLimit
+      - PrometheusTargetSyncFailure
+      - RouterAvailabilityLT30PctSRE
+      - RunawaySDNPreventingContainerCreationSRE
+      - SouthboundStale
+      - ThanosRuleQueueIsDroppingAlerts
+      - WorkerNodeFileDescriptorLimitSRE
+      - WorkerNodeFilesystemAlmostOutOfFiles
+      - WorkerNodeFilesystemSpaceFillingUp
+      - MachineOutOfComplianceSRE
+      - DynatraceMonitoringStackDownSRE
+      - DynatraceDynakubeComponenetsDegradedSRE
+      - KubeletDebuggingHandlersEnabledSRE
+      ignoredNamespaces:
+      - openshift-logging
+      - openshift-redhat-marketplace
+      - openshift-operators
+      - openshift-customer-monitoring
+      - openshift-cnv
+      - openshift-route-monitoring-operator
+      - openshift-user-workload-monitoring
+      - openshift-pipelines
+    extDependencyAvailabilityChecks:
+      http:
+        timeout: 10
+        urls:
+          - ${OCM_BASE_URL}

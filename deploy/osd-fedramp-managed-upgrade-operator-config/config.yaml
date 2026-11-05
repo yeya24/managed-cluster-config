@@ -1,10 +1,15 @@
 deploymentMode: "SelectorSyncSet"
 selectorSyncSet:
   matchExpressions:
-    - key: hive.openshift.io/version-major-minor
-      operator: NotIn
-      values: ["4.5", "4.6", "4.7"]
     - key: api.openshift.com/fedramp
+      operator: In
+      values:
+        - "true"
+    - key: hive-prod01
+      operator: NotIn
+      values:
+      - "true"
+    - key: app-interface-managed
       operator: In
       values:
         - "true"

@@ -7,7 +7,7 @@ metadata:
         policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         policy.open-cluster-management.io/standards: NIST SP 800-53
     name: rbac-permissions-operator-config-sp
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     disabled: false
     policy-templates:
@@ -17,8 +17,12 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRoleBinding
@@ -41,6 +45,9 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp2
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     exclude:
                         - kube
@@ -52,7 +59,8 @@ spec:
                     include:
                         - '*'
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -75,6 +83,9 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp3
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     exclude:
                         - kube
@@ -86,7 +97,8 @@ spec:
                     include:
                         - '*'
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -109,8 +121,12 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp4
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRoleBinding
@@ -133,6 +149,9 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp5
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     exclude:
                         - kube
@@ -144,7 +163,8 @@ spec:
                     include:
                         - '*'
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -167,6 +187,9 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp6
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     exclude:
                         - kube
@@ -178,7 +201,8 @@ spec:
                     include:
                         - '*'
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -201,12 +225,16 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp7
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     include:
                         - openshift-operators
                         - openshift-operators-redhat
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -229,12 +257,16 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp8
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     include:
                         - openshift-operators
                         - openshift-operators-redhat
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -257,12 +289,16 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp9
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     include:
                         - openshift-operators
                         - openshift-operators-redhat
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -285,12 +321,16 @@ spec:
             metadata:
                 name: rbac-permissions-operator-config-sp10
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 namespaceSelector:
                     include:
                         - openshift-operators
                         - openshift-operators-redhat
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: RoleBinding
@@ -307,12 +347,13 @@ spec:
                 pruneObjectBehavior: DeleteIfCreated
                 remediationAction: enforce
                 severity: low
+    remediationAction: enforce
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
     name: placement-rbac-permissions-operator-config-sp
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     clusterSelector:
         matchExpressions:
@@ -325,7 +366,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
     name: binding-rbac-permissions-operator-config-sp
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 placementRef:
     apiGroup: apps.open-cluster-management.io
     kind: PlacementRule

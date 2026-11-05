@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: sre-ocm-agent-operator-alerts
+    role: alert-rules
+  name: sre-ocm-agent-operator-alerts
+  namespace: openshift-monitoring
+spec:
+  groups:
+  - name: sre-ocm-agent-operator-alerts
+    rules:
+    - alert: OCMAgentResponseFailureServiceLogsSRE
+      # Alert if the OCM agent response failure metric has been set for an hour
+      expr: ocm_agent_response_failure{ocm_service="service_logs"} == 1
+      for: 60m
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        link: "https://github.com/openshift/ops-sop/blob/master/v4/alerts/OCMAgentResponseFailureServiceLogsSRE.md"
+      annotations:
+        message: OCM Agent has failed to receive a response from the service_logs service for 60 minutes.
+    - alert: OCMAgentOperatorPullSecretInvalidSRE
+      expr: ocm_agent_operator_pull_secret_invalid > 0
+      for: 15m
+      labels:
+        severity: warning
+        namespace: openshift-monitoring
+        link: "https://github.com/openshift/ops-sop/blob/master/v4/alerts/OCMAgentResponseFailureServiceLogsSRE.md#verify-cluster-pull-secrets"
+      annotations:
+        message: OCM Agent Operator cannot retrieve or parse the cluster's `cloud.openshift.com` pull secret.
+    - alert: OCMAgentPullSecretInvalidSRE
+      expr: ocm_agent_pull_secret_invalid > 0
+      for: 15m
+      labels:
+        severity: warning
+        namespace: openshift-monitoring
+        link: "https://github.com/openshift/ops-sop/blob/master/v4/alerts/OCMAgentResponseFailureServiceLogsSRE.md#verify-cluster-pull-secrets"
+      annotations:
+        message: OCM Agent pull secret auth token is not valid.
+
+
+    # Alert SRE if the OCM agent service log metric has been sent more than 10 within a 3-day period.
+    - alert: OCMAgentServiceLogsSentExceedingLimit
+      expr: sum(increase(ocm_agent_service_log_sent_total[3d])) > 10
+      labels:
+        severity: warning
+        namespace: openshift-monitoring
+        link: "https://github.com/openshift/ops-sop/blob/master/v4/alerts/OCMAgentServiceLogsSentExceedingLimit.md"
+      annotations:
+        message: OCM Agent has sent an excessive number of service logs, potentially indicating an issue. Immediate investigation may be required.

@@ -1,0 +1,18 @@
+# This is a tailored profile for HyperShift clusters. It extends the ocp4-cis profile
+# and overrides the values of some variables to make the profile work for HyperShift clusters.
+# please replace the value of <hypershift-hosted-cluster-name> with the actual name of the hosted cluster.
+apiVersion: compliance.openshift.io/v1alpha1
+kind: TailoredProfile
+metadata:
+ name: cis-compliance-hypershift
+ namespace: openshift-compliance
+ annotations:
+   compliance.openshift.io/product-type: Platform
+spec:
+ title: CIS Benchmark for Hypershift
+ description: CIS Benchmark for Hypershift Master-plane components
+ extends: ocp4-cis
+ setValues:
+   - name: ocp4-hypershift-cluster
+     value: "<hypershift-hosted-cluster-name>"
+     rationale: This value is used to determine if we are scanning a HyperShift hosted cluster

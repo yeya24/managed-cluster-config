@@ -1,9 +1,22 @@
 reviewers:
-- srep-functional-leads
-- srep-team-leads
+- srep-functional-team-hulk
+- rosa-staff-engineers
+- rosa-hcp-platform-staff-engineers
+- rosa-hcp-platform-core-team
+# Following are individual approvers from the SRE-P team that have been added in
+# a one-off effort to find more maintainers for this repository.
+# If you feel like you should be part of this group, create a PR and ping rosa-staff-engineers.
+- xiaoyu74
+- zmird-r
+- cjnovak98
 approvers:
-- srep-functional-leads
-- srep-team-leads
-maintainers:
-- jewzaam
-- jharrington22
+- srep-functional-team-hulk
+- rosa-staff-engineers
+- rosa-hcp-platform-staff-engineers
+- rosa-hcp-platform-core-team
+# Following are individual approvers from the SRE-P team that have been added in
+# a one-off effort to find more maintainers for this repository.
+# If you feel like you should be part of this group, create a PR and ping rosa-staff-engineers.
+- xiaoyu74
+- zmird-r
+- cjnovak98

@@ -1,0 +1,16 @@
+apiVersion: ocmagent.managed.openshift.io/v1alpha1
+kind: ManagedNotification
+metadata:
+  name: sre-node-condition-managed-notification
+  namespace: openshift-ocm-agent-operator
+spec:
+  notifications:
+    # available conditions: https://kubernetes.io/docs/reference/node/node-status/#condition 
+    - name: NodeConditionNotification
+      severity: Moderate
+      summary: "Worker node is experiencing ${condition}"
+      activeBody: |-
+        ${condition} condition is true for at least one worker.${explanation} For more information, consult the relevant ROSA documentation here: ${documentation}.
+      resolvedBody: |-
+        ${condition} condition is resolved.
+      resendWait: 6

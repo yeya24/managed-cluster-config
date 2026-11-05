@@ -10,6 +10,16 @@ spec:
   groups:
   - name: sre-managed-notification-alerts
     rules:
+    
+    - alert: KubePersistentVolumeFillingUpSRE
+    # KubePersistentVolumeFillingUp alert firing in openshift-user-workload-monitoring namespace (could be extended to other namespaces if needed).
+      expr: count by (namespace, persistentvolumeclaim) (ALERTS{alertname="KubePersistentVolumeFillingUp", alertstate="firing", namespace="openshift-user-workload-monitoring"}) >= 1
+      for: 30m
+      labels:
+        severity: Info
+        namespace: "{{ $labels.namespace }}"
+        send_managed_notification: "true"
+        managed_notification_template: "KubePersistentVolumeFillingUp"
     - alert: LoggingVolumeFillingUpNotificationSRE
     # KubePersistentVolumeFillingUp alert firing in openshift-logging Namespace.
       expr: count(ALERTS{alertname="KubePersistentVolumeFillingUp", alertstate="firing", namespace="openshift-logging"}) >= 1
@@ -40,3 +50,170 @@ spec:
         namespace: audit-exporter
         send_managed_notification: "true"
         managed_notification_template: "NonSystemChangeValidationWebhookConfigurations"
+    - alert: WorkerNodeFileDescriptorLimitSRE
+      # This is the same as the upstream alert, but groups by instance id (which is which node is affected)
+      # and then only fires on the worker nodes. The `unless` portion is because when getting the node-role
+      # metric it splits on the roles, so infra,worker then gives two results, one with just the infra role
+      # and one with just the worker role.  So we get just the infra/controlplane nodes and then exclude
+      # them from the worker node result, which gives us just the customer worker nodes.
+      expr: |-
+        group by (instance) (
+          node_filefd_allocated{job="node-exporter"} * 100 / node_filefd_maximum{job="node-exporter"} >= 90
+        )
+        * on (instance) group_left ()group by(instance) (
+          label_replace(kube_node_role{role!~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+        unless
+        group by(instance) (
+          label_replace(kube_node_role{role=~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+      for: 15m
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: WorkerNodeFileDescriptorAtLimit
+        send_managed_notification: "true"
+      annotations:
+        message: "Kernel is predicted to exhaust file descriptors limit soon."
+    - alert: CustomerWorkloadPreventingDrainSRE
+      # This alert will fire when a node is unscheduleable and is failing to drain for an extended period of time based on a customer workload that's failing to drain
+      # This alert will NOT fire if there is an ongoing upgrade, or if the node is not deleting.
+      expr: |-
+        (
+          (
+            kube_node_spec_unschedulable > 0
+            unless
+            ignoring(node,container,endpoint,job,namespace,service)
+            sum(mapi_machine_set_status_replicas{name=~".*upgrade$"}) > 0
+          )
+          * on (node)
+          group_right ()group by (node)
+            (pods_preventing_node_drain)
+        )
+        * on (node)
+        group_left ()group by (node)
+          (kube_node_role{role!~"infra|control-plane|master"})
+        unless group by(node)
+          (kube_node_role{role=~"infra|control-plane|master"})
+      for: 30m # KubeNodeUnscheduleableSRE fires at 1h, but since this is specific to customer workloads we can shorten the feedback loop here.
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: CustomerWorkloadPreventingDrain
+        send_managed_notification: "true"
+      annotations:
+        message: "A non-openshift workload is preventing a node from draining."
+
+# This is the same as the upstream alert, but groups by the whether it's a worker node or notification
+    - alert: WorkerNodeFilesystemSpaceFillingUp
+      annotations:
+        description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint
+          }}, at {{ $labels.instance }} has only {{ printf "%.2f" $value }}% available
+          space left and is filling up fast.
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/cluster-monitoring-operator/NodeFilesystemSpaceFillingUp.md
+        summary: Filesystem is predicted to run out of space within the next 4 hours.
+      expr: |
+        (
+          node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} * 100 < 10
+        and
+          predict_linear(node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"}[6h], 4*60*60) < 0
+        and
+          node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} == 0
+        )
+        * on (instance) group_left ()group by(instance) (
+          label_replace(kube_node_role{role!~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+        unless
+        group by(instance) (
+          label_replace(kube_node_role{role=~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+      for: 1h
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: WorkerNodeFilesystemSpaceFillingUp
+        send_managed_notification: "true"
+
+    - alert: WorkerNodeFilesystemAlmostOutOfSpace
+      annotations:
+        description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint
+          }}, at {{ $labels.instance }} has only {{ printf "%.2f" $value }}% available
+          space left.
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/cluster-monitoring-operator/NodeFilesystemAlmostOutOfSpace.md
+        summary: Filesystem has less than 3% space left.
+      expr: |
+        (
+          node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} / node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} * 100 < 3
+        and
+          node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} == 0
+        )
+        * on (instance) group_left ()group by(instance) (
+          label_replace(kube_node_role{role!~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+        unless
+        group by(instance) (
+          label_replace(kube_node_role{role=~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+      for: 30m
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: WorkerNodeFilesystemAlmostOutOfSpace
+        send_managed_notification: "true"
+
+    - alert: WorkerNodeFilesystemFilesFillingUp
+      annotations:
+        description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint
+          }}, at {{ $labels.instance }} has only {{ printf "%.2f" $value }}% available
+          inodes left and is filling up fast.
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/cluster-monitoring-operator/NodeFilesystemFilesFillingUp.md
+        summary: Filesystem is predicted to run out of inodes within the next 4 hours.
+      expr: |
+        (
+          node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} * 100 < 20
+        and
+          predict_linear(node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"}[6h], 4*60*60) < 0
+        and
+          node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} == 0
+        )
+        * on (instance) group_left ()group by(instance) (
+          label_replace(kube_node_role{role!~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+        unless
+        group by(instance) (
+          label_replace(kube_node_role{role=~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+      for: 1h
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: WorkerNodeFilesystemFilesFillingUp
+        send_managed_notification: "true"
+
+    - alert: WorkerNodeFilesystemAlmostOutOfFiles
+      annotations:
+        description: Filesystem on {{ $labels.device }}, mounted on {{ $labels.mountpoint
+          }}, at {{ $labels.instance }} has only {{ printf "%.2f" $value }}% available
+          inodes left.
+        runbook_url: https://github.com/openshift/runbooks/blob/master/alerts/cluster-monitoring-operator/NodeFilesystemAlmostOutOfFiles.md
+        summary: Filesystem has less than 3% inodes left.
+      expr: |
+        (
+          node_filesystem_files_free{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} / node_filesystem_files{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} * 100 < 3
+        and
+          node_filesystem_readonly{job="node-exporter",fstype!="",mountpoint!~"/var/lib/ibmc-s3fs.*"} == 0
+        )
+        * on (instance) group_left ()group by(instance) (
+          label_replace(kube_node_role{role!~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+        unless
+        group by(instance) (
+          label_replace(kube_node_role{role=~"infra|control-plane|master"}, "instance", "$1", "node", "(.*)")
+        )
+      for: 1h
+      labels:
+        severity: critical
+        namespace: openshift-monitoring
+        managed_notification_template: WorkerNodeFilesystemAlmostOutOfFiles
+        send_managed_notification: "true"
+  

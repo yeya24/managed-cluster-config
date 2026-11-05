@@ -1,0 +1,158 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backplane-acs-admins-project
+rules:
+# ACS team can interact with ACS
+- apiGroups:
+  - platform.stackrox.io
+  - cloud.stackrox.io
+  resources:
+  - centrals
+  - securedclusters
+  - fleetshards
+  - gitopsinstallations
+  verbs:
+  - get
+  - list
+  - watch
+# ACS team can get pod logs
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - watch
+  - list
+# ACS SRE can view services
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+# ACS team can view deployments, statefulsets, daemonsets
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+# ACS Team can view ACS Addon CRs in package-operator.run API group
+- apiGroups:
+  - package-operator.run
+  resources:
+  - packages
+  - objectdeployments
+  - objectsets
+  - objecttemplates
+  verbs:
+  - get
+  - list
+  - watch
+# ACS Team can view ACS Addon CRs in addons.managed.openshift.io API group
+- apiGroups:
+  - addons.managed.openshift.io
+  resources:
+  - addons
+  - addoninstance
+  - addonoperators
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view applications
+- apiGroups:
+  - app.k8s.io
+  resources:
+  - applications
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view routes
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view egress firewalls
+- apiGroups:
+  - k8s.ovn.org
+  resources:
+  - egressfirewalls
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view roles and rolebindings
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can patch persistentvolumeclaims in rhacs-observability
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - patch
+# ACS SRE can view secret stores and external secrets
+- apiGroups:
+  - external-secrets.io
+  resources:
+  - secretstores
+  - externalsecrets
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view serviceaccounts
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can view securitycontextconstraints
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - get
+  - list
+  - watch
+# ACS SRE can create pods/portforward and pods/exec
+- apiGroups:
+  - ""
+  resources:
+  - pods/portforward
+  - pods/exec
+  verbs:
+  - create
+# ACS SRE can delete pods
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - delete

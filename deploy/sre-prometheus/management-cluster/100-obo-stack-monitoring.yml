@@ -1,0 +1,63 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus-k8s
+  namespace: openshift-observability-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-k8s
+  namespace: openshift-observability-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-k8s
+  namespace: openshift-monitoring
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rhobs-hypershift-monitoring-stack-prometheus
+  namespace: openshift-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: "prometheus_remote_.*"
+      action: keep
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rhobs-hypershift-monitoring-stack-prometheus
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hypershift-monitoring-stack-prometheus
+  namespace: openshift-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: "prometheus_remote_.*"
+      action: keep
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hypershift-monitoring-stack-prometheus

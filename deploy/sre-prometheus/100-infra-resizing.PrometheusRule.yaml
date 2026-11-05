@@ -1,0 +1,35 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: sre-infra-resizing-alerts
+    role: alert-rules
+  name: sre-infra-resizing-alerts
+  namespace: openshift-monitoring
+spec:
+  groups:
+  - name: sre-infra-resizing-alerts
+    rules:
+      ## Pages SRE when any per-node N-1 infra resize alert is firing.
+      ## Covers extreme (90%, 45m/30m), short window (85%/80%, 1h), and long window (75%/70%, 12h) tiers.
+      - alert: InfraNodesNeedResizingSRE
+        expr: |
+          count(
+            ALERTS{alertname="cpu-InfraNodesExcessiveResourceConsumptionPerNodeSRE45m", alertstate="firing"}
+            OR
+            ALERTS{alertname="memory-InfraNodesExcessiveResourceConsumptionPerNodeSRE30m", alertstate="firing"}
+            OR
+            ALERTS{alertname="cpu-InfraNodesNeedResizingSRE1h", alertstate="firing"}
+            OR
+            ALERTS{alertname="cpu-InfraNodesNeedResizingSRE12h", alertstate="firing"}
+            OR
+            ALERTS{alertname="memory-InfraNodesNeedResizingSRE1h", alertstate="firing"}
+            OR
+            ALERTS{alertname="memory-InfraNodesNeedResizingSRE12h", alertstate="firing"}
+          ) >= 1
+        for: 1m
+        labels:
+          severity: critical
+          namespace: openshift-monitoring
+        annotations:
+          message: "The cluster's infrastructure nodes need to be vertically scaled. At least N-1 infra nodes have exceeded resource utilization thresholds. See linked SOP for details."

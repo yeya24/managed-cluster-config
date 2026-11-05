@@ -7,14 +7,13 @@ data:
   config.yaml: |
     upgradeType: OSD
     configManager:
-      source: LOCAL
-      localConfigName: managed-upgrade-config
+      source: OCM
+      ocmBaseUrl: ${OCM_BASE_URL}
       watchInterval: 60
     maintenance:
       controlPlaneTime: 130
       ignoredAlerts:
         controlPlaneCriticals:
-        # ClusterOperatorDown - https://bugzilla.redhat.com/show_bug.cgi?id=1955300
         - ClusterOperatorDown
     scale:
       timeOut: 30
@@ -26,30 +25,55 @@ data:
       expectedNodeDrainTime: 8
     healthCheck:
       ignoredCriticals:
-      - DNSErrors05MinSRE
       - MetricsClientSendFailingSRE
-      - UpgradeNodeScalingFailedSRE
-      - UpgradeClusterCheckFailedSRE
       - PruningCronjobErrorSRE
-      - PrometheusRuleFailures
-      - CannotRetrieveUpdates
-      - FluentdNodeDown
-      # OSD-11927
-      - ClusterProxyCAExpiringSRE
-      # https://bugzilla.redhat.com/show_bug.cgi?id=1986981
-      - PrometheusRemoteWriteBehind
-      - KubePersistentVolumeErrors
-      - PrometheusBadConfig
-      - PrometheusRemoteStorageFailures
-      - AlertmanagerMembersInconsistent
-      - AlertmanagerClusterFailedToSendAlerts
-      - AlertmanagerConfigInconsistent
-      - AlertmanagerClusterDown
-      - KubeStateMetricsListErrors
-      - KubeStateMetricsWatchErrors
-      - ThanosRuleSenderIsFailingAlerts
-      - ThanosRuleHighRuleEvaluationFailures
-      - ThanosNoRuleEvaluations
+      - etcdGRPCRequestsSlow
+      # OSD-22494
+      - AlertmanagerFailedReload
+      - CloudIngressOperatorOfflineSRE
+      - ClusterMonitoringErrorBudgetBurnSRE
+      - ConfigureAlertmanagerOperatorOfflineSRE
+      - console-ErrorBudgetBurn
+      - ControlPlaneNodeFileDescriptorLimitSRE
+      - ControlPlaneNodeFilesystemAlmostOutOfFiles
+      - ControlPlaneNodeFilesystemSpaceFillingUp
+      - COOWorkloadMissingSRE
+      - COOWorkloadDegradedSRE
+      - CustomerWorkloadPreventingDrainSRE
+      - EbsVolumeBurstBalanceLT20PctSRE
+      - EbsVolumeStuckAttaching10MinSRE
+      - EbsVolumeStuckDetaching10MinSRE
+      - etcdHighNumberOfFailedGRPCRequests
+      - ExcessiveContainerMemoryCriticalSRE
+      - ExtremelyHighIndividualControlPlaneCPU
+      - ExtremelyHighIndividualControlPlaneMemory
+      - HAProxyDown
+      - InsightsOperatorDownSRE
+      - KubePersistentVolumeFillingUp
+      - KubePersistentVolumeInodesFillingUp
+      - KubePersistentVolumeUsageCriticalCustomer
+      - KubePersistentVolumeUsageCriticalLayeredProduct
+      - MCDRebootError
+      - MultipleVersionsOfEFSCSIDriverInstalled
+      - NodeClockNotSynchronising
+      - NodeFileDescriptorLimit
+      - NodeFilesystemAlmostOutOfSpace
+      - NodeFilesystemAlmostOutOfFiles
+      - NodeFilesystemSpaceFillingUp
+      - NodeFilesystemFilesFillingUp
+      - NodeRAIDDegraded
+      - NorthboundStale
+      - OCMAgentResponseFailureServiceLogsSRE
+      - PodDisruptionBudgetLimit
+      - PodDisruptionBudgetLimitSRE
+      - PrometheusTargetSyncFailure
+      - RouterAvailabilityLT30PctSRE
+      - RunawaySDNPreventingContainerCreationSRE
+      - SouthboundStale
+      - ThanosRuleQueueIsDroppingAlerts
+      - WorkerNodeFileDescriptorLimitSRE
+      - WorkerNodeFilesystemAlmostOutOfFiles
+      - WorkerNodeFilesystemSpaceFillingUp
       ignoredNamespaces:
       - openshift-logging
       - openshift-redhat-marketplace
@@ -59,5 +83,10 @@ data:
       - openshift-route-monitoring-operator
       - openshift-user-workload-monitoring
       - openshift-pipelines
+    extDependencyAvailabilityChecks:
+      http:
+        timeout: 10
+        urls:
+          - ${OCM_BASE_URL}/api/clusters_mgmt/v1
     environment:
       fedramp: true

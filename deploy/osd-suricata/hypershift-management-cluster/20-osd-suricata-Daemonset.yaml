@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: suricata
+  namespace: openshift-suricata
+spec:
+  selector:
+    matchLabels:
+      name: suricata
+  template:
+    metadata:
+      labels:
+        name: suricata
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      containers:
+        - env:
+            - name: OO_PAUSE_ON_START
+              value: "false"
+          image: quay.io/redhat-services-prod/ids-tenant/suricata@sha256:74dd391d5765c4907940229bb754f781aa5c72521bb7f68e670567cb6fd8f0eb
+          imagePullPolicy: IfNotPresent
+          name: suricata
+          resources:
+            limits:
+              cpu: 900m
+              memory: 900Mi
+            requests:
+              cpu: 100m
+              memory: 50Mi
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+          volumeMounts:
+            - mountPath: /host/var/log
+              name: host-filesystem
+            - mountPath: /etc/suricata/rules/sre-events.rules
+              subPath: sre-events.rules
+              name: suricata-config
+            - mountPath: /etc/suricata/suricata.yaml
+              name: suricata-config
+              subPath: suricata.yaml
+        - name: log-cleaner
+          image: quay.io/redhat-services-prod/ids-tenant/log-cleaner@sha256:2f8621b89b0ab2d99e8ffebb1a97d7a0d9ed91a93a0b9f764203c5d3d1ab7dee
+          volumeMounts:
+            - mountPath: /host/var/log
+              name: host-filesystem
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      serviceAccount: suricata-sa
+      serviceAccountName: suricata-sa
+      tolerations:
+        - effect: NoSchedule
+          key: hypershift.openshift.io/cluster
+          operator: Exists
+        - effect: NoSchedule
+          key: hypershift.openshift.io/request-serving-component
+          operator: Exists
+      volumes:
+        - hostPath:
+            path: /var/log
+          name: host-filesystem
+        - name: suricata-config
+          configMap:
+            name: suricata-config
+            optional: true

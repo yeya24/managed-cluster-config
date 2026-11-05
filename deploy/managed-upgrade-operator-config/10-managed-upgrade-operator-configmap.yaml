@@ -9,13 +9,15 @@ data:
     configManager:
       source: OCM
       ocmBaseUrl: ${OCM_BASE_URL}
-      watchInterval: 60
+      watchInterval: 10
     maintenance:
       controlPlaneTime: 130
       ignoredAlerts:
         controlPlaneCriticals:
         # ClusterOperatorDown - https://bugzilla.redhat.com/show_bug.cgi?id=1955300
         - ClusterOperatorDown
+        # KubeletDown - https://issues.redhat.com/browse/OCPBUGS-20201
+        - KubeletDown
     scale:
       timeOut: 30
     upgradeWindow:
@@ -24,33 +26,60 @@ data:
     nodeDrain:
       timeOut: 45
       expectedNodeDrainTime: 8
+    featureGate:
+      enabled:
+      - PreHealthCheck
+      - ServiceLogNotification
     healthCheck:
       ignoredCriticals:
-      - DNSErrors05MinSRE
       - MetricsClientSendFailingSRE
-      - UpgradeNodeScalingFailedSRE
       - PruningCronjobErrorSRE
-      - PrometheusRuleFailures
-      - CannotRetrieveUpdates
-      - FluentdNodeDown
-      # OSD-11927
-      - ClusterProxyCAExpiringSRE
-      # https://bugzilla.redhat.com/show_bug.cgi?id=1986981
-      - PrometheusRemoteWriteBehind
-      - KubePersistentVolumeErrors
-      - PrometheusBadConfig
-      - PrometheusRemoteStorageFailures
-      - AlertmanagerMembersInconsistent
-      - AlertmanagerClusterFailedToSendAlerts
-      - AlertmanagerConfigInconsistent
-      - AlertmanagerClusterDown
-      - KubeStateMetricsListErrors
-      - KubeStateMetricsWatchErrors
-      - ThanosRuleSenderIsFailingAlerts
-      - ThanosRuleHighRuleEvaluationFailures
-      - ThanosNoRuleEvaluations
-      # OSD-13649
       - etcdGRPCRequestsSlow
+      # OSD-22494
+      - AlertmanagerFailedReload
+      - CloudIngressOperatorOfflineSRE
+      - ClusterMonitoringErrorBudgetBurnSRE
+      - ConfigureAlertmanagerOperatorOfflineSRE
+      - console-ErrorBudgetBurn
+      - ControlPlaneNodeFileDescriptorLimitSRE
+      - ControlPlaneNodeFilesystemAlmostOutOfFiles
+      - ControlPlaneNodeFilesystemSpaceFillingUp
+      - CustomerWorkloadPreventingDrainSRE
+      - CreateMustGather
+      - EbsVolumeBurstBalanceLT20PctSRE
+      - EbsVolumeStuckAttaching10MinSRE
+      - EbsVolumeStuckDetaching10MinSRE
+      - etcdHighNumberOfFailedGRPCRequests
+      - ExcessiveContainerMemoryCriticalSRE
+      - ExtremelyHighIndividualControlPlaneCPU
+      - ExtremelyHighIndividualControlPlaneMemory
+      - HAProxyDown
+      - InsightsOperatorDownSRE
+      - KubePersistentVolumeFillingUp
+      - KubePersistentVolumeInodesFillingUp
+      - KubePersistentVolumeUsageCriticalCustomer
+      - KubePersistentVolumeUsageCriticalLayeredProduct
+      - MCDRebootError
+      - MultipleVersionsOfEFSCSIDriverInstalled
+      - NodeClockNotSynchronising
+      - NodeFileDescriptorLimit
+      - NodeFilesystemAlmostOutOfSpace
+      - NodeFilesystemAlmostOutOfFiles
+      - NodeFilesystemSpaceFillingUp
+      - NodeFilesystemFilesFillingUp
+      - NodeRAIDDegraded
+      - NorthboundStale
+      - OCMAgentResponseFailureServiceLogsSRE
+      - PodDisruptionBudgetLimit
+      - PodDisruptionBudgetLimitSRE
+      - PrometheusTargetSyncFailure
+      - RouterAvailabilityLT30PctSRE
+      - RunawaySDNPreventingContainerCreationSRE
+      - SouthboundStale
+      - ThanosRuleQueueIsDroppingAlerts
+      - WorkerNodeFileDescriptorLimitSRE
+      - WorkerNodeFilesystemAlmostOutOfFiles
+      - WorkerNodeFilesystemSpaceFillingUp
       ignoredNamespaces:
       - openshift-logging
       - openshift-redhat-marketplace

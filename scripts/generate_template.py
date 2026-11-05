@@ -7,9 +7,13 @@ import sys
 import argparse
 import copy
 import re
+from typing import Any
 
 cluster_platform_ann = "hive.openshift.io/cluster-platform"
 config_filename = "config.yaml"
+environment_selector = "api.openshift.com/environment"
+fedramp_selector = "api.openshift.com/fedramp"
+valid_environments = ["production", "staging", "integration"]
 
 data_sss = []
 data_resources = {
@@ -73,6 +77,9 @@ def add_sss_for(name, directory, config):
         for item in config['matchExpressions']:
             o['spec']['clusterDeploymentSelector']['matchExpressions'].append(item)
 
+    if 'enableResourceTemplates' in config:
+        o['spec']['enableResourceTemplates'] = config['enableResourceTemplates']
+
     # Get all yaml files as array of yaml objects
     yamls = get_all_yaml_obj(get_all_yaml_files(directory))
     if len(yamls) == 0:
@@ -93,17 +100,18 @@ def add_sss_for(name, directory, config):
     # collect the new sss for later processing
     data_sss.append(o)
 
-def add_resources_for(directory, config):
-    # there isn't a template, only thing we really care about is the environments and simply add each resource to each of those environments.
-    # at this point the properties we care about are _required_
-    yamls = get_all_yaml_obj(get_all_yaml_files(directory))
-    if len(yamls) == 0:
-        return
 
-    for y in yamls:
-        for environment in config["environments"]:
-            data_resources[environment].append(y)
-
+def expression_is_true(expression: dict[str, Any]) -> bool:
+    values = [v.lower() for v in expression["values"]]
+    match expression["operator"]:
+        case "In":
+            return "true" in values
+        case "NotIn":
+            return "false" in values
+        case "Eq":
+            return "true" in values
+        case _:
+            return False
 
 if __name__ == '__main__':
     #Argument parser
@@ -115,6 +123,8 @@ if __name__ == '__main__':
     arguments = parser.parse_args()
 
     dirpaths = []
+    missing_config = False
+
     for (dirpath, dirnames, filenames) in os.walk(arguments.yaml_directory):
         if filenames:
             dirpaths.append(dirpath)
@@ -125,14 +135,20 @@ if __name__ == '__main__':
         path_config = os.path.join(dirpath, config_filename)
         if os.path.exists(path_config):
             config = get_yaml(path_config)
+        else:
+            if len(get_all_yaml_files(dirpath)) > 0 :
+                missing_config = True
+                print("ERROR : Missing config.yaml for resource defined in {}".format(dirpath))
+                continue
 
         deploymentMode = "SelectorSyncSet"
 
         if "deploymentMode" in config:
-            deploymentMode = config["deploymentMode"]
+            deploymentMode: str = config["deploymentMode"]
 
-        if deploymentMode == "Direct":
-            add_resources_for(dirpath, config["direct"])
+        # skip any directory only containing governance policies, as they are only for hypershift
+        if deploymentMode == "Policy":
+            continue
 
         elif deploymentMode == "SelectorSyncSet":
             # initialize defaults for config
@@ -154,6 +170,36 @@ if __name__ == '__main__':
                 # legacy, get rid of this!
                 if sss_name.startswith("UPSERT-"):
                     sss_name = sss_name[7:]
+            
+            # Using isupper() to check for any element to be uppercase
+            if any(ele.isupper() for ele in sss_name):
+                print("The selectorsyncset name should be lowercase. Found selectorsyncset with name " + sss_name)
+                sys.exit(1)
+
+            # Verify that environment selectors make sense
+            sss = config["selectorSyncSet"]
+            valid_envs = valid_environments.copy()
+            expressions: list[dict[str, Any]] = sss.get("matchExpressions", []) if sss else []
+            # FIXME: This is a workaround till https://issues.redhat.com/browse/HCMSEC-2597 is fixed.
+            # Until then 'stage' is a valid environment for fedramp
+            for expression in expressions:
+                if expression["key"] == fedramp_selector:
+                    if expression_is_true(expression):
+                        valid_envs.append('stage')
+            for expression in expressions:
+                if not expression["key"] == environment_selector:
+                    continue
+                values: str|list[str] = expression["values"]
+                match values:
+                    case list(x):
+                        for value in x:
+                            if value not in valid_envs:
+                                raise RuntimeError(f"The environment value {value} for {dirpath} does not match a known environment: must be one of {valid_environments}")
+                    case str(x):
+                        if x not in valid_envs:
+                            raise RuntimeError(f"The environment value {values} for {dirpath} does not match a known environment: must be one of {valid_environments}")
+                    case _:
+                        raise RuntimeError(f"Received invalid values {values} for {dirpath} for key: {environment_selector}")
 
             # If no matchLabelsApplyMode, process as nornmal
             if "matchLabelsApplyMode" in config["selectorSyncSet"] and config["selectorSyncSet"]["matchLabelsApplyMode"] == "OR":
@@ -189,6 +235,10 @@ if __name__ == '__main__':
                 # Catches anyone with a rouge value
                 add_sss_for(sss_name, dirpath, config["selectorSyncSet"])
 
+    if missing_config :
+        print("Some config.yaml files are missing, exiting...")
+        sys.exit(1)
+
     # Get the template
     template_data = get_yaml(os.path.join(arguments.template_dir, "template.yaml"))
 
@@ -210,4 +260,3 @@ if __name__ == '__main__':
         # and write the env specific output
         with open(os.path.join(arguments.destination, "00-osd-managed-cluster-config-{}.yaml.tmpl".format(environment)), "w") as outfile:
             yaml.dump(data_out, outfile)
-

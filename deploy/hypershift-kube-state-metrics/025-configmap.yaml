@@ -1,0 +1,209 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-state-metrics-config
+  namespace: hypershift-observability
+data:
+  custom-resource-state.yaml: |
+    spec:
+      resources:
+        - groupVersionKind:
+            group: cluster.x-k8s.io
+            version: v1beta1
+            kind: Machine
+          metricNamePrefix: capi_machine
+          labelsFromPath:
+            machine_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+            _id:
+              - metadata
+              - labels
+              - "cluster.x-k8s.io/cluster-name"
+          metrics:
+            - name: "info"
+              help: "The current state of a machine."
+              each:
+                type: Info
+                info:
+                    labelsFromPath:
+                      status_phase: [status, phase]
+                      ready: [status, conditions, "[type=Ready]", status]
+                      healthcheck_succeeded: [status, conditions, "[type=HealthCheckSucceeded]", status]
+                      infrastructure_ready: [status, conditions, "[type=InfrastructureReady]", status]
+                      node_healthy: [status, conditions, "[type=NodeHealthy]", status]
+                      draining_succeeded: [status, conditions, "[type=DrainingSucceeded]", status]
+        - groupVersionKind:
+            group: hypershift.openshift.io
+            version: v1beta1
+            kind: NodePool
+          metricNamePrefix: hypershift_nodepool
+          labelsFromPath:
+            nodepool_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+            _id:
+              - metadata
+              - labels
+              - "api.openshift.com/id"
+            cluster_name:
+              - metadata
+              - labels
+              - "api.openshift.com/name"
+          metrics:
+            - name: "state_info"
+              help: "The current state of a nodepool."
+              each:
+                type: Info
+                info:
+                    labelsFromPath:
+                      ready: [status, conditions, "[type=Ready]", status]
+                      payload_valid: [status, conditions, "[type=ValidGeneratedPayload]", status]
+                      payload_valid_reason: [status, conditions, "[type=ValidGeneratedPayload]", reason]
+                      ign_server_reached: [status, conditions, "[type=ReachedIgnitionEndpoint]", status]
+                      ign_server_reached_reason: [status, conditions, "[type=ReachedIgnitionEndpoint]", reason]
+            - name: "spec_info"
+              help: "Static spec-derived info for a nodepool"
+              each:
+                type: Info
+                info:
+                    labelsFromPath:
+                      market_type: [spec, platform, aws, placement, marketType]
+        # ---- Velero Backup CRs ----
+        # Two metrics needed because newly enqueued backups have status: {}
+        # (no phase set yet), and KSM Info metrics are NOT emitted when the
+        # labelsFromPath path cannot resolve.
+        #
+        # "created" (Gauge): always emits for every Backup CR → gives total count.
+        # "info" (Info): only emits when status.phase exists → gives count by phase.
+        # Enqueued backups = count(created) - count(info).
+        - groupVersionKind:
+            group: velero.io
+            version: v1
+            kind: Backup
+          metricNamePrefix: velero_backup_cr
+          labelsFromPath:
+            backup_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+          metrics:
+            - name: "created"
+              help: "Creation timestamp of Velero backup CR (always emitted)."
+              each:
+                type: Gauge
+                gauge:
+                  path: [metadata, creationTimestamp]
+            - name: "info"
+              help: "Velero backup CR with phase label (only when phase exists)."
+              each:
+                type: Info
+                info:
+                  labelsFromPath:
+                    phase: [status, phase]
+        # ---- Velero DeleteBackupRequest CRs ----
+        # Same pattern as Backups: most DBRs have status: {} while enqueued,
+        # only the one actively being processed has status.phase: InProgress.
+        # "created" gives total count, "info" gives count by phase.
+        - groupVersionKind:
+            group: velero.io
+            version: v1
+            kind: DeleteBackupRequest
+          metricNamePrefix: velero_dbr_cr
+          labelsFromPath:
+            dbr_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+          metrics:
+            - name: "created"
+              help: "Creation timestamp of Velero DBR (always emitted)."
+              each:
+                type: Gauge
+                gauge:
+                  path: [metadata, creationTimestamp]
+            - name: "info"
+              help: "Velero DBR with phase label (only when phase exists)."
+              each:
+                type: Info
+                info:
+                  labelsFromPath:
+                    phase: [status, phase]
+        # ---- VolumeSnapshotContent (cluster-scoped) ----
+        # With deletionPolicy=Delete, VSCs should not persist.
+        # Any existing VSC is an orphan from a stuck deletion.
+        # Signal: count > 0 = problem.
+        - groupVersionKind:
+            group: snapshot.storage.k8s.io
+            version: v1
+            kind: VolumeSnapshotContent
+          metricNamePrefix: velero_vsc_cr
+          labelsFromPath:
+            vsc_name:
+              - metadata
+              - name
+          metrics:
+            - name: "created"
+              help: "Creation timestamp of VolumeSnapshotContent (always emitted)."
+              each:
+                type: Gauge
+                gauge:
+                  path: [metadata, creationTimestamp]
+        # ---- VolumeSnapshot (namespace-scoped) ----
+        # Same as VSC: should not persist with deletionPolicy=Delete.
+        - groupVersionKind:
+            group: snapshot.storage.k8s.io
+            version: v1
+            kind: VolumeSnapshot
+          metricNamePrefix: velero_vs_cr
+          labelsFromPath:
+            vs_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+          metrics:
+            - name: "created"
+              help: "Creation timestamp of VolumeSnapshot (always emitted)."
+              each:
+                type: Gauge
+                gauge:
+                  path: [metadata, creationTimestamp]
+        # ---- cert-manager Challenge CRs ----
+        - groupVersionKind:
+            group: acme.cert-manager.io
+            version: v1
+            kind: Challenge
+          metricNamePrefix: certmanager_challenge_cr
+          labelsFromPath:
+            challenge_name:
+              - metadata
+              - name
+            exported_namespace:
+              - metadata
+              - namespace
+          metrics:
+            - name: "created"
+              help: "Creation timestamp of cert-manager Challenge CR."
+              each:
+                type: Gauge
+                gauge:
+                  path: [metadata, creationTimestamp]
+            - name: "info"
+              help: "cert-manager Challenge CR with state label."
+              each:
+                type: Info
+                info:
+                  labelsFromPath:
+                    state: [status, state]

@@ -23,6 +23,7 @@ aggregationRule:
       - cloud-ingress-operator
       - rbac-permissions-operator
       - splunk-forwarder-operator-og
+      - must-gather-operator
       # Layred Product operator groups
       - redhat-layered-product-og
       # RHMI operator groups (legacy)
@@ -45,10 +46,10 @@ aggregationRule:
       - openshift-managed-upgrade-operator
       - openshift-velero
       - openshift-ocm-agent-operator
+      - openshift-must-gather-operator
       # MTSRE AddonOperator namespace
       - openshift-addon-operator
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: dedicated-admins-cluster
-rules: []

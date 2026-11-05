@@ -8,9 +8,8 @@ spec:
   - backplane-cee-readers-cluster
   - backplane-readers-cluster
   permissions:
-  - allowFirst: true
-    clusterRoleName: dedicated-readers
-    namespacesAllowedRegex: "(^kube$|^kube-.*|^openshift$|^openshift-.*|^default$|^redhat-.*)"
+  - clusterRoleName: dedicated-readers
+    namespacesAllowedRegex: "(^kube$|^kube-.*|^openshift$|^openshift-.*|^default$|^redhat-.*|^rhacs$|^rhacs-*)"
     namespacesDeniedRegex: openshift-backplane-cluster-admin
   subjectKind: Group
   subjectName: system:serviceaccounts:openshift-backplane-cee

@@ -1,0 +1,35 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: autonode-nodepool-guardrails
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["karpenter.sh"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["nodepools"]
+  validations:
+    # Block undersized instance types (.nano, .micro, .small, .medium, .large)
+    - expression: |
+        !has(object.spec) ||
+        !has(object.spec.template) ||
+        !has(object.spec.template.spec) ||
+        !has(object.spec.template.spec.requirements) ||
+        object.spec.template.spec.requirements
+          .filter(r, r.key == 'node.kubernetes.io/instance-type' && r.operator == 'In')
+          .all(r, r.values.all(v,
+            !v.matches('\\.(nano|micro|small|medium|large)$')
+          ))
+      message: "Instance types ending in .nano, .micro, .small, .medium, or .large are not allowed. Use .xlarge or bigger."
+    # Block reserved node-role labels
+    - expression: |
+        !has(object.spec) ||
+        !has(object.spec.template) ||
+        !has(object.spec.template.metadata) ||
+        !has(object.spec.template.metadata.labels) ||
+        !('node-role.kubernetes.io/master' in object.spec.template.metadata.labels) &&
+        !('node-role.kubernetes.io/infra' in object.spec.template.metadata.labels) &&
+        !('node-role.kubernetes.io/control-plane' in object.spec.template.metadata.labels)
+      message: "Labels node-role.kubernetes.io/master, node-role.kubernetes.io/infra, and node-role.kubernetes.io/control-plane are reserved and cannot be set on NodePools."

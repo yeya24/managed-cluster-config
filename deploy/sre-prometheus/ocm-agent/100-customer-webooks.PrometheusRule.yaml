@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: sre-managed-notification-alerts-for-customer-webhooks
+    role: alert-rules
+  name: sre-managed-notification-alerts-for-customer-webhooks
+  namespace: openshift-monitoring
+spec:
+  groups:
+  - name: customer-webhooks
+    rules:
+    - record: webhook:max_duration
+      expr: |-
+        max by (webhook_name, operation, type) (
+          label_replace(
+            label_replace(
+              increase(apiserver_admission_webhook_admission_duration_seconds_sum[5m]) /
+                increase(apiserver_admission_webhook_admission_duration_seconds_count[5m]),
+            "type", "mutating", "type", "admit"),
+          "webhook_name", "$0", "name", ".*")
+        )
+    - record: webhook:configuration_service:raw
+      expr: |-
+        label_replace(
+          kube_validatingwebhookconfiguration_webhook_clientconfig_service,
+          "type", "validating", "", ""
+        ) or label_replace(
+          kube_mutatingwebhookconfiguration_webhook_clientconfig_service,
+          "type", "mutating", "", ""
+        )
+    - record: webhook:configuration_service
+      expr: |-
+        (
+          sgn(count by (type, webhook_name) (webhook:configuration_service:raw) > 1)
+        ) or on (type, webhook_name) (
+          webhook:configuration_service:raw
+        )
+    # SlowCustomerWebhookSRE
+    # excludes ACS's policyeval.stackrox.io as it's expected to take longer than 1 second, see ROX-31966, SREP-3456
+    - alert: SlowCustomerWebhookSRE
+      expr: |-
+        webhook:max_duration
+        * on(type, webhook_name) group_left(service_namespace, service_name)
+        webhook:configuration_service{webhook_name !~ ".*\\.openshift\\.io|policyeval.stackrox.io", service_namespace !~ "openshift-.*", service_name !~ ""}
+        > 1
+      for: 15m
+      labels:
+        namespace: openshift-monitoring
+        severity: warning
+        send_managed_notification: "true"
+        managed_notification_template: "SlowCustomerWebhook"
+        duration_threshold: "1 second"
+      annotations:
+        summary: Customer defined admission webhook is slow.
+        description: "{{ $labels.webhook_name }} webhook is slow on {{ $labels.operation }} operations"

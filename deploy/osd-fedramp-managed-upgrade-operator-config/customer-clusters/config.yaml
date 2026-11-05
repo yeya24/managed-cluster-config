@@ -1,0 +1,14 @@
+deploymentMode: "SelectorSyncSet"
+selectorSyncSet:
+  matchExpressions:
+    - key: api.openshift.com/fedramp
+      operator: In
+      values:
+        - "true"
+    - key: hive-prod01
+      operator: NotIn
+      values:
+      - "true"
+    - key: app-interface-managed
+      operator: DoesNotExist
+  resourceApplyMode: Upsert

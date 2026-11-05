@@ -7,7 +7,7 @@ metadata:
         policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         policy.open-cluster-management.io/standards: NIST SP 800-53
     name: ccs-dedicated-admins
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     disabled: false
     policy-templates:
@@ -17,8 +17,12 @@ spec:
             metadata:
                 name: ccs-dedicated-admins
             spec:
+                evaluationInterval:
+                    compliant: 2h
+                    noncompliant: 45s
                 object-templates:
-                    - complianceType: musthave
+                    - complianceType: mustonlyhave
+                      metadataComplianceType: musthave
                       objectDefinition:
                         apiVersion: rbac.authorization.k8s.io/v1
                         kind: ClusterRole
@@ -36,12 +40,13 @@ spec:
                 pruneObjectBehavior: DeleteIfCreated
                 remediationAction: enforce
                 severity: low
+    remediationAction: enforce
 ---
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
     name: placement-ccs-dedicated-admins
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 spec:
     clusterSelector:
         matchExpressions:
@@ -54,7 +59,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
     name: binding-ccs-dedicated-admins
-    namespace: openshift-rbac-policies
+    namespace: openshift-acm-policies
 placementRef:
     apiGroup: apps.open-cluster-management.io
     kind: PlacementRule
